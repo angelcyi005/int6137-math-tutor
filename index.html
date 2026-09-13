@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智数导师 - AI 互动数学学习平台</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- KaTeX for Math rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+
+    <!-- Chart.js for Graphing -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Vue 3 CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.4);
+            border-radius: 9999px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(107, 114, 128, 0.6);
+        }
+        .katex-display {
+            margin: 0.5em 0 !important;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: 4px 0;
+        }
+        .math-bubble .katex {
+            font-size: 1.05em;
+        }
+        [v-cloak] { display: none; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans h-full antialiased selection:bg-brand-500 selection:text-white">
+    <div id="app" v-cloak class="flex h-screen flex-col md:flex-row overflow-hidden">
+        
+        <!-- Sidebar Navigation -->
+        <aside class="w-full md:w-80 bg-slate-950/80 border-r border-slate-800 flex flex-col justify-between shrink-0">
+            <!-- Top Logo & Mode Selector -->
+            <div class="p-4 space-y-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-400 flex items-center justify-center shadow-lg shadow-brand-500/30">
+                            <i class="fa-solid font-bold text-xl text-white">∑</i>
+                        </div>
+                        <div>
+                            <h1 class="font-bold text-lg tracking-tight text-white flex items-center gap-2">
+                                智数导师 <span class="text-xs bg-brand-500/20 text-brand-400 px-2 py-0.5 rounded-full border border-brand-500/30">AI Pro</span>
+                            </h1>
+                            <p class="text-xs text-slate-400">互动式数学学习伙伴</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation Tabs -->
+                <div class="grid grid-cols-3 gap-1 bg-slate-900/80 p-1 rounded-xl border border-slate-800/80">
+                    <button @click="activeTab = 'chat'" 
+                            :class="activeTab === 'chat' ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'" 
+                            class="py-2 text-xs font-medium rounded-lg transition-all flex flex-col items-center gap-1">
+                        <i class="fa-solid fa-comments"></i> 对话答疑
+                    </button>
+                    <button @click="activeTab = 'graph'" 
+                            :class="activeTab === 'graph' ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'" 
+                            class="py-2 text-xs font-medium rounded-lg transition-all flex flex-col items-center gap-1">
+                        <i class="fa-solid fa-chart-line"></i> 函数图像
+                    </button>
+                    <button @click="activeTab = 'quiz'" 
+                            :class="activeTab === 'quiz' ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'" 
+                            class="py-2 text-xs font-medium rounded-lg transition-all flex flex-col items-center gap-1">
+                        <i class="fa-solid fa-square-check"></i> 智能刷题
+                    </button>
+                </div>
+
+                <!-- Mode Settings -->
+                <div class="p-3 bg-slate-900/50 rounded-xl border border-slate-800/60 space-y-3">
+                    <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">教学风格模式</div>
+                    <div class="space-y-1.5">
+                        <label v-for="mode in tutorModes" :key="mode.id" 
+                               class="flex items-center gap-2.5 p-2 rounded-lg cursor-pointer hover:bg-slate-800/60 transition-all border border-transparent"
+                               :class="{'bg-slate-800/90 border-slate-700/80': currentMode === mode.id}">
+                            <input type="radio" v-model="currentMode" :value="mode.id" class="hidden">
+                            <div class="w-7 h-7 rounded-lg flex items-center justify-center text-xs shrink-0" :class="mode.bgColor">
+                                <i :class="mode.icon" class="text-white"></i>
+                            </div>
+                            <div class="overflow-hidden">
+                                <div class="text-xs font-medium text-slate-200">{{ mode.name }}</div>
+                                <div class="text-[10px] text-slate-400 truncate">{{ mode.desc }}</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Quick Preset Topics -->
+                <div class="space-y-2">
+                    <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                        <span>常见热门话题</span>
+                        <i class="fa-solid fa-bolt text-amber-400 text-xs"></i>
+                    </div>
+                    <div class="flex flex-wrap gap-1.5">
+                        <button v-for="prompt in quickPrompts" :key="prompt"
+                                @click="useQuickPrompt(prompt)"
+                                class="text-xs bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white px-2.5 py-1.5 rounded-lg border border-slate-700/50 transition-all text-left truncate max-w-full">
+                            {{ prompt }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Tools / API Status -->
+            <div class="p-4 border-t border-slate-800 space-y-2">
+                <button @click="toggleScratchpad" class="w-full py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium flex items-center justify-center gap-2 border border-slate-700 transition-all">
+                    <i class="fa-solid fa-pen-ruler text-indigo-400"></i>
+                    <span>{{ showScratchpad ? '关闭演练草稿板' : '打开手写草稿板' }}</span>
+                </button>
+                
+                <div class="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+                    <span class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Gemini 3.1 引擎在线
+                    </span>
+                    <button @click="clearHistory" class="hover:text-rose-400 transition-colors">
+                        <i class="fa-solid fa-trash-can"></i> 清空记录
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 flex flex-col bg-slate-900 relative overflow-hidden">
+            
+            <!-- VIEW 1: CHAT INTERFACE -->
+            <div v-show="activeTab === 'chat'" class="flex-1 flex flex-col h-full overflow-hidden">
+                <!-- Messages List -->
+                <div ref="chatContainer" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 custom-scrollbar">
+                    <!-- Welcome Hero Card -->
+                    <div v-if="messages.length === 0" class="max-w-2xl mx-auto py-8 text-center space-y-6">
+                        <div class="w-16 h-16 bg-gradient-to-tr from-brand-600 to-indigo-400 rounded-2xl flex items-center justify-center mx-auto shadow-xl shadow-brand-500/20">
+                            <i class="fa-solid fa-graduation-cap text-3xl text-white"></i>
+                        </div>
+                        <div class="space-y-2">
+                            <h2 class="text-2xl font-bold text-white tracking-tight">你好！我是你的专属 AI 数学导师</h2>
+                            <p class="text-sm text-slate-400 max-w-md mx-auto">
+                                无论是代数推导、几何证明、微积分难题，还是高考/考研竞赛准备，我随时为你准备解答！
+                            </p>
+                        </div>
+
+                        <!-- Card Features -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-left">
+                            <div class="p-4 bg-slate-800/40 border border-slate-800 rounded-xl space-y-1">
+                                <i class="fa-solid fa-lightbulb text-amber-400 text-lg mb-1"></i>
+                                <div class="text-xs font-semibold text-slate-200">苏格拉底式启发</div>
+                                <div class="text-[11px] text-slate-400">引导第一步解题思路，不直接抄答案。</div>
+                            </div>
+                            <div class="p-4 bg-slate-800/40 border border-slate-800 rounded-xl space-y-1">
+                                <i class="fa-solid fa-square-root-variable text-indigo-400 text-lg mb-1"></i>
+                                <div class="text-xs font-semibold text-slate-200">LaTeX 美观渲染</div>
+                                <div class="text-[11px] text-slate-400">支持公式、矩阵、积分等精美排版呈现。</div>
+                            </div>
+                            <div class="p-4 bg-slate-800/40 border border-slate-800 rounded-xl space-y-1">
+                                <i class="fa-solid fa-camera text-emerald-400 text-lg mb-1"></i>
+                                <div class="text-xs font-semibold text-slate-200">拍照/草图识别</div>
+                                <div class="text-[11px] text-slate-400">一键上传题目截图或草图，AI 深度读题。</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Chat Messages -->
+                    <div v-for="(msg, index) in messages" :key="index" 
+                         class="flex gap-3 max-w-4xl mx-auto"
+                         :class="msg.role === 'user' ? 'justify-end' : 'justify-start'">
+                        
+                        <!-- AI Avatar -->
+                        <div v-if="msg.role === 'assistant'" class="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center shrink-0 text-white font-bold text-xs shadow-md">
+                            <i class="fa-solid fa-robot"></i>
+                        </div>
+
+                        <!-- Message Content Box -->
+                        <div class="space-y-2 max-w-[85%] md:max-w-[78%]">
+                            <div class="p-4 rounded-2xl text-sm leading-relaxed math-bubble relative shadow-sm"
+                                 :class="msg.role === 'user' 
+                                    ? 'bg-brand-600 text-white rounded-br-none' 
+                                    : 'bg-slate-800/90 border border-slate-700/70 text-slate-100 rounded-bl-none'">
+                                
+                                <!-- Attached Image Display -->
+                                <div v-if="msg.image" class="mb-3 rounded-lg overflow-hidden border border-white/20 max-w-xs">
+                                    <img :src="msg.image" class="w-full h-auto object-cover" alt="用户题目图">
+                                </div>
+
+                                <!-- Rendered Text & LaTeX -->
+                                <div v-html="renderMarkdownAndMath(msg.content)" class="space-y-2"></div>
+                            </div>
+
+                            <!-- Actions Row for Assistant Messages -->
+                            <div v-if="msg.role === 'assistant'" class="flex items-center gap-3 text-xs text-slate-400 pl-1">
+                                <button @click="speakText(msg.content)" class="hover:text-brand-400 flex items-center gap-1 transition-colors">
+                                    <i class="fa-solid" :class="speakingIndex === index ? 'fa-volume-xmark text-amber-400 animate-pulse' : 'fa-volume-high'"></i>
+                                    <span>{{ speakingIndex === index ? '停止朗读' : '朗读讲解' }}</span>
+                                </button>
+                                <button @click="copyText(msg.content)" class="hover:text-brand-400 flex items-center gap-1 transition-colors">
+                                    <i class="fa-regular fa-copy"></i>
+                                    <span>复制文本</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- User Avatar -->
+                        <div v-if="msg.role === 'user'" class="w-8 h-8 rounded-lg bg-slate-700 flex items-center justify-center shrink-0 text-slate-200 font-bold text-xs">
+                            <i class="fa-solid fa-user"></i>
+                        </div>
+                    </div>
+
+                    <!-- Loading Indicator -->
+                    <div v-if="isLoading" class="flex gap-3 max-w-4xl mx-auto items-center">
+                        <div class="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white text-xs shrink-0">
+                            <i class="fa-solid fa-circle-notch animate-spin"></i>
+                        </div>
+                        <div class="bg-slate-800/80 border border-slate-700/60 rounded-2xl rounded-bl-none px-4 py-3 text-xs text-slate-400 flex items-center gap-2">
+                            <span>导师正在认真推导解题思路...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Input & Math Keyboard Floating Bar -->
+                <div class="p-3 md:p-4 border-t border-slate-800 bg-slate-950/90 backdrop-blur-md">
+                    <div class="max-w-4xl mx-auto space-y-2">
+                        
+                        <!-- Quick Math Symbol Selector Toolbar -->
+                        <div class="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1 text-xs">
+                            <span class="text-[10px] uppercase font-bold text-slate-500 pr-1 shrink-0">常用符号:</span>
+                            <button v-for="sym in mathSymbols" :key="sym.label"
+                                    @click="insertSymbol(sym.value)"
+                                    class="px-2 py-1 bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 rounded text-slate-300 font-mono shrink-0 hover:text-white transition-all">
+                                {{ sym.label }}
+                            </button>
+                        </div>
+
+                        <!-- Image Preview Thumbnail (if uploaded) -->
+                        <div v-if="selectedImage" class="relative inline-block">
+                            <img :src="selectedImage" class="h-16 w-16 object-cover rounded-lg border border-brand-500 shadow-md">
+                            <button @click="removeImage" class="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs shadow-md">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+
+                        <!-- Main Input Form -->
+                        <form @submit.prevent="sendMessage" class="flex items-end gap-2">
+                            <!-- Image Upload Trigger -->
+                            <label class="p-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl cursor-pointer border border-slate-700 transition-all flex items-center justify-center shrink-0"
+                                   title="上传数学题目截图">
+                                <i class="fa-solid fa-camera text-emerald-400"></i>
+                                <input type="file" accept="image/*" @change="handleImageUpload" class="hidden">
+                            </label>
+
+                            <!-- Text Input Box -->
+                            <div class="flex-1 bg-slate-900 border border-slate-700/80 rounded-xl focus-within:border-brand-500 focus-within:ring-1 focus-within:ring-brand-500 transition-all">
+                                <textarea ref="inputBox" 
+                                          v-model="inputQuery" 
+                                          @keydown.enter.exact.prevent="sendMessage"
+                                          rows="2" 
+                                          placeholder="输入数学难题、定理疑问，或贴入 LaTeX 公式 (Shift+Enter 换行)..."
+                                          class="w-full bg-transparent px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none resize-none custom-scrollbar"></textarea>
+                            </div>
+
+                            <!-- Send Button -->
+                            <button type="submit" 
+                                    :disabled="isLoading || (!inputQuery.trim() && !selectedImage)"
+                                    class="p-3 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-medium rounded-xl shadow-lg shadow-brand-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all shrink-0 flex items-center justify-center">
+                                <i class="fa-solid fa-paper-plane"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 2: GRAPHING CALCULATOR -->
+            <div v-show="activeTab === 'graph'" class="flex-1 flex flex-col md:flex-row h-full overflow-hidden p-4 md:p-6 gap-4">
+                <!-- Controls Panel -->
+                <div class="w-full md:w-80 bg-slate-950/80 border border-slate-800 rounded-2xl p-4 space-y-4 shrink-0 flex flex-col justify-between">
+                    <div class="space-y-4">
+                        <div>
+                            <h3 class="text-base font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-chart-line text-brand-400"></i>
+                                函数图像可视化
+                            </h3>
+                            <p class="text-xs text-slate-400 mt-1">直观解析函数性质与交点变幻</p>
+                        </div>
+
+                        <!-- Function Inputs -->
+                        <div class="space-y-3">
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold text-indigo-400">函数 f(x)</label>
+                                <div class="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2">
+                                    <span class="text-xs font-mono text-slate-400">y =</span>
+                                    <input v-model="graphEq1" placeholder="x^2 - 4" class="w-full bg-transparent text-xs text-white focus:outline-none font-mono">
+                                </div>
+                            </div>
+
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold text-emerald-400">对比函数 g(x) (可选)</label>
+                                <div class="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2">
+                                    <span class="text-xs font-mono text-slate-400">y =</span>
+                                    <input v-model="graphEq2" placeholder="2*x + 1" class="w-full bg-transparent text-xs text-white focus:outline-none font-mono">
+                                </div>
+                            </div>
+
+                            <!-- Range Selectors -->
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="text-[11px] text-slate-400">X 轴最小值</label>
+                                    <input type="number" v-model.number="xMin" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-xs text-white">
+                                </div>
+                                <div>
+                                    <label class="text-[11px] text-slate-400">X 轴最大值</label>
+                                    <input type="number" v-model.number="xMax" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-xs text-white">
+                                </div>
+                            </div>
+
+                            <button @click="updateChart" class="w-full py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-semibold shadow-md transition-all">
+                                重新生成图像
+                            </button>
+                        </div>
+
+                        <!-- Presets for Graphing -->
+                        <div class="space-y-2 pt-2 border-t border-slate-800">
+                            <span class="text-xs font-semibold text-slate-400">典型经典函数</span>
+                            <div class="grid grid-cols-1 gap-1.5">
+                                <button @click="setGraphPreset('Math.sin(x)', 'Math.cos(x)')" class="text-left text-xs bg-slate-900 hover:bg-slate-800 p-2 rounded-lg border border-slate-800 text-slate-300">
+                                    三角函数：$\sin(x)$ & $\cos(x)$
+                                </button>
+                                <button @click="setGraphPreset('x*x*x - 3*x', '3*x - 2')" class="text-left text-xs bg-slate-900 hover:bg-slate-800 p-2 rounded-lg border border-slate-800 text-slate-300">
+                                    三次多项式极值：$x^3 - 3x$
+                                </button>
+                                <button @click="setGraphPreset('Math.exp(x)', 'Math.log(x)')" class="text-left text-xs bg-slate-900 hover:bg-slate-800 p-2 rounded-lg border border-slate-800 text-slate-300">
+                                    指数与对数：$e^x$ & $\ln(x)$
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button @click="askAIGraphAnalysis" class="w-full py-2.5 bg-indigo-900/60 hover:bg-indigo-900 text-indigo-200 border border-indigo-700/50 rounded-xl text-xs font-medium flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        AI 分析该函数的极值与零点
+                    </button>
+                </div>
+
+                <!-- Canvas Chart Area -->
+                <div class="flex-1 bg-slate-950/80 border border-slate-800 rounded-2xl p-4 flex flex-col justify-center items-center relative overflow-hidden">
+                    <canvas id="mathGraphCanvas" class="w-full h-full max-h-[600px]"></canvas>
+                </div>
+            </div>
+
+            <!-- VIEW 3: PRACTICE QUIZ GENERATOR -->
+            <div v-show="activeTab === 'quiz'" class="flex-1 flex flex-col h-full overflow-y-auto p-4 md:p-6 space-y-6 custom-scrollbar">
+                <div class="max-w-4xl mx-auto w-full space-y-6">
+                    <!-- Quiz Header & Config -->
+                    <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-6 space-y-4">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                            <div>
+                                <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                                    <i class="fa-solid fa-brain text-emerald-400"></i>
+                                    AI 智能刷题与靶向训练
+                                </h3>
+                                <p class="text-xs text-slate-400 mt-1">Gemini 根据你的学段与考点动态定制练习</p>
+                            </div>
+
+                            <button @click="generateNewQuiz" :disabled="isQuizLoading" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-emerald-600/20 flex items-center gap-2 transition-all">
+                                <i class="fa-solid" :class="isQuizLoading ? 'fa-spinner animate-spin' : 'fa-plus'"></i>
+                                生成专属训练题
+                            </button>
+                        </div>
+
+                        <!-- Quiz Options Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="text-xs font-semibold text-slate-400">学段目标</label>
+                                <select v-model="quizGrade" class="mt-1 w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none">
+                                    <option value="初中">初中 (代数与几何基础)</option>
+                                    <option value="高中/高考">高中 / 高考突破</option>
+                                    <option value="大学高等数学">大学高等数学 / 微积分</option>
+                                    <option value="线性代数">线性代数与概率统计</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs font-semibold text-slate-400">知识模块</label>
+                                <input v-model="quizTopic" placeholder="例如：二次函数极值、导数单调性、矩阵特征值" class="mt-1 w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="text-xs font-semibold text-slate-400">难度等级</label>
+                                <select v-model="quizDifficulty" class="mt-1 w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none">
+                                    <option value="基础巩固">基础巩固</option>
+                                    <option value="中等进阶">中等进阶</option>
+                                    <option value="竞赛/压轴题">竞赛 / 压轴拔高</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Generated Quiz Display -->
+                    <div v-if="currentQuiz" class="bg-slate-950/80 border border-slate-800 rounded-2xl p-6 space-y-6">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                            <span class="text-xs font-semibold bg-brand-500/20 text-brand-400 px-3 py-1 rounded-full border border-brand-500/30">
+                                {{ quizGrade }} · {{ quizDifficulty }}
+                            </span>
+                            <span class="text-xs text-slate-500">题号 #{{ quizCount }}</span>
+                        </div>
+
+                        <!-- Question Statement -->
+                        <div class="space-y-3">
+                            <h4 class="text-sm font-semibold text-slate-300">【题目内容】</h4>
+                            <div class="p-4 bg-slate-900/90 rounded-xl border border-slate-800 text-sm leading-relaxed text-slate-100" 
+                                 v-html="renderMarkdownAndMath(currentQuiz.question)"></div>
+                        </div>
+
+                        <!-- Interactive User Answer Draft Box -->
+                        <div class="space-y-2">
+                            <label class="text-xs font-semibold text-slate-400">作答推演区（输入你的推导过程或最终结果）</label>
+                            <textarea v-model="userQuizAnswer" rows="3" placeholder="写下你的第一步或最终答案..." class="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-brand-500 custom-scrollbar"></textarea>
+                        </div>
+
+                        <div class="flex gap-3">
+                            <button @click="showQuizSolution = !showQuizSolution" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium border border-slate-700 transition-all">
+                                <i class="fa-solid" :class="showQuizSolution ? 'fa-eye-slash' : 'fa-lightbulb text-amber-400'"></i>
+                                {{ showQuizSolution ? '隐藏解析答案' : '查看标准提示与答案' }}
+                            </button>
+                            <button @click="askAIEvaluateQuiz" class="px-4 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-semibold transition-all">
+                                让导师批改我的解答
+                            </button>
+                        </div>
+
+                        <!-- Standard Solution Section -->
+                        <div v-if="showQuizSolution" class="p-4 bg-indigo-950/40 border border-indigo-800/60 rounded-xl space-y-3">
+                            <div class="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
+                                <i class="fa-solid fa-circle-check"></i> 标准分步解析：
+                            </div>
+                            <div class="text-sm leading-relaxed text-slate-200" v-html="renderMarkdownAndMath(currentQuiz.solution)"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FLOATING SCRATCHPAD / DRAWING CANVAS MODAL -->
+            <div v-if="showScratchpad" class="absolute bottom-4 right-4 z-50 w-96 md:w-[480px] bg-slate-950 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+                <div class="p-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+                    <div class="flex items-center gap-2 text-xs font-bold text-slate-200">
+                        <i class="fa-solid fa-pen-ruler text-indigo-400"></i>
+                        <span>交互式演算草稿板</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs">
+                        <button @click="clearCanvas" class="text-slate-400 hover:text-rose-400 transition-colors">
+                            <i class="fa-solid fa-eraser"></i> 清空
+                        </button>
+                        <button @click="sendCanvasToAI" class="bg-brand-600 hover:bg-brand-500 text-white px-2 py-1 rounded text-[11px] font-medium">
+                            识别发送给导师
+                        </button>
+                        <button @click="showScratchpad = false" class="text-slate-400 hover:text-white">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="bg-slate-900 p-2 flex items-center justify-between border-b border-slate-800/80 text-xs">
+                    <div class="flex items-center gap-2">
+                        <span class="text-slate-400 text-[10px]">画笔颜色:</span>
+                        <input type="color" v-model="penColor" class="w-5 h-5 bg-transparent cursor-pointer rounded">
+                        <span class="text-slate-400 text-[10px]">粗细:</span>
+                        <input type="range" min="1" max="10" v-model.number="penWidth" class="w-16">
+                    </div>
+                </div>
+                <canvas ref="scratchCanvas" 
+                        @mousedown="startDrawing" 
+                        @mousemove="draw" 
+                        @mouseup="stopDrawing" 
+                        @mouseleave="stopDrawing"
+                        @touchstart="handleTouchStart"
+                        @touchmove="handleTouchMove"
+                        @touchend="stopDrawing"
+                        class="w-full h-64 bg-slate-950 cursor-crosshair"></canvas>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted, nextTick, watch } = Vue;
+
+        createApp({
+            setup() {
+                // Active View Tab State
+                const activeTab = ref('chat'); // 'chat' | 'graph' | 'quiz'
+
+                // Gemini API Config
+                const apiKey = localStorage.getItem('gemini_api_key') || "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+                // Tutor Modes Definition
+                const tutorModes = [
+                    { 
+                        id: 'socratic', 
+                        name: '苏格拉底启发模式', 
+                        desc: '通过反问与分步提示引导学生独立思考',
+                        bgColor: 'bg-amber-500/20 text-amber-400',
+                        icon: 'fa-lightbulb',
+                        systemPrompt: '你是一位注重苏格拉底引导教学法的中文数学导师。当学生提出数学问题时，请不要直接给出完整解答或最终答案。先指出核心关键概念，并抛出一个启发性的问题引导他们思考第一步。鼓励他们推演。'
+                    },
+                    { 
+                        id: 'step-by-step', 
+                        name: '分步详细推导', 
+                        desc: '提供逻辑清晰、定理明确的全过程步骤',
+                        bgColor: 'bg-indigo-500/20 text-indigo-400',
+                        icon: 'fa-list-check',
+                        systemPrompt: '你是一位严谨细致的中文数学导师。请针对学生的问题，给出条理极其清晰的分步推导过程。每一步要写出所用的定理或法则。公式全部使用 LaTeX 正确包裹（行内$..$，块级$$..$$）。'
+                    },
+                    { 
+                        id: 'visual-concept', 
+                        name: '概念直观拆解', 
+                        desc: '用图像想象与通俗比喻解释抽象定理',
+                        bgColor: 'bg-emerald-500/20 text-emerald-400',
+                        icon: 'fa-eye',
+                        systemPrompt: '你是一位善于把复杂数学概念通俗化的导师。请结合直观物理背景、几何直觉或生活比喻来解释抽象数学定理（如微积分、线性代数、拓扑学等），帮助学生建立本质理解。'
+                    }
+                ];
+                const currentMode = ref('socratic');
+
+                // Quick Prompts
+                const quickPrompts = [
+                    "如何用几何直觉理解微积分基本定理？",
+                    "请讲解二元一次方程组的高斯消元法",
+                    "求解极限: \\lim_{x \\to 0} \\frac{\\sin x}{x}",
+                    "矩阵的特征值和特征向量到底代表什么？",
+                    "解释勾股定理的多种证明方法"
+                ];
+
+                // Math Symbol Toolbar
+                const mathSymbols = [
+                    { label: 'x²', value: 'x^2' },
+                    { label: '√x', value: '\\sqrt{x}' },
+                    { label: 'a/b', value: '\\frac{a}{b}' },
+                    { label: '∫', value: '\\int_{a}^{b} ' },
+                    { label: '∑', value: '\\sum_{i=1}^{n} ' },
+                    { label: 'lim', value: '\\lim_{x \\to 0} ' },
+                    { label: 'π', value: '\\pi ' },
+                    { label: 'θ', value: '\\theta ' },
+                    { label: '∞', value: '\\infty ' },
+                    { label: '≤', value: '\\le ' },
+                    { label: '≥', value: '\\ge ' }
+                ];
+
+                // Chat State
+                const messages = ref([]);
+                const inputQuery = ref('');
+                const selectedImage = ref(null);
+                const isLoading = ref(false);
+                const chatContainer = ref(null);
+                const inputBox = ref(null);
+                const speakingIndex = ref(null);
+
+                // Graphing Calculator State
+                const graphEq1 = ref('x*x - 4');
+                const graphEq2 = ref('2*x + 1');
+                const xMin = ref(-5);
+                const xMax = ref(5);
+                let chartInstance = null;
+
+                // Practice Quiz State
+                const quizGrade = ref('高中/高考');
+                const quizTopic = ref('二次函数与导数');
+                const quizDifficulty = ref('中等进阶');
+                const isQuizLoading = ref(false);
+                const currentQuiz = ref(null);
+                const showQuizSolution = ref(false);
+                const userQuizAnswer = ref('');
+                const quizCount = ref(1);
+
+                // Scratchpad Drawing Canvas State
+                const showScratchpad = ref(false);
+                const scratchCanvas = ref(null);
+                const penColor = ref('#818cf8');
+                const penWidth = ref(3);
+                let isDrawing = false;
+                let ctx = null;
+
+                // --- UTILS: LaTeX & Markdown Rendering ---
+                const renderMarkdownAndMath = (text) => {
+                    if (!text) return '';
+                    
+                    // Simple Markdown replacement for bold, code blocks
+                    let formatted = text
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                        .replace(/`([^`]+)`/g, '<code class="bg-slate-800 text-indigo-300 px-1 py-0.5 rounded text-xs">$1</code>')
+                        .replace(/\n/g, '<br>');
+
+                    // Post-process via KaTeX auto-render in DOM after updates
+                    nextTick(() => {
+                        if (chatContainer.value) {
+                            renderMathInElement(chatContainer.value, {
+                                delimiters: [
+                                    {left: '$$', right: '$$', display: true},
+                                    {left: '$', right: '$', display: false},
+                                    {left: '\\(', right: '\\)', display: false},
+                                    {left: '\\[', right: '\\]', display: true}
+                                ],
+                                throwOnError: false
+                            });
+                        }
+                    });
+
+                    return formatted;
+                };
+
+                // Insert Symbol into Input
+                const insertSymbol = (sym) => {
+                    inputQuery.value += sym;
+                    if (inputBox.value) inputBox.value.focus();
+                };
+
+                // Quick Prompt Trigger
+                const useQuickPrompt = (prompt) => {
+                    inputQuery.value = prompt;
+                    sendMessage();
+                };
+
+                // Image Handling
+                const handleImageUpload = (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        selectedImage.value = event.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                };
+
+                const removeImage = () => {
+                    selectedImage.value = null;
+                };
+
+                // Exponential Backoff API Fetcher for Gemini
+                const fetchGeminiWithRetry = async (payload, retries = 3, delay = 1000) => {
+                    for (let i = 0; i < retries; i++) {
+                        try {
+                            const res = await fetch(apiUrl, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload)
+                            });
+                            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                            return await res.json();
+                        } catch (err) {
+                            if (i === retries - 1) throw err;
+                            await new Promise(r => setTimeout(r, delay * Math.pow(2, i)));
+                        }
+                    }
+                };
+
+                // --- CHAT LOGIC ---
+                const sendMessage = async () => {
+                    const query = inputQuery.value.trim();
+                    if (!query && !selectedImage.value) return;
+
+                    if (!apiKey) {
+                        messages.value.push({
+                            role: 'assistant',
+                            content: '⚠️ 尚未配置 API 密钥：请点击右下角的 ⚙ 按钮，填入你的 Gemini API Key 后再开始对话。'
+                        });
+                        scrollToBottom();
+                        return;
+                    }
+
+                    const userMsg = {
+                        role: 'user',
+                        content: query,
+                        image: selectedImage.value
+                    };
+
+                    messages.value.push(userMsg);
+                    
+                    const imageToSubmit = selectedImage.value;
+                    inputQuery.value = '';
+                    selectedImage.value = null;
+                    isLoading.value = true;
+                    scrollToBottom();
+
+                    // Prepare API Contents
+                    const selectedModeObj = tutorModes.find(m => m.id === currentMode.value);
+                    const systemPromptText = selectedModeObj ? selectedModeObj.systemPrompt : tutorModes[0].systemPrompt;
+
+                    const parts = [];
+                    if (query) parts.push({ text: query });
+                    if (imageToSubmit) {
+                        const base64Data = imageToSubmit.split(',')[1];
+                        const mimeType = imageToSubmit.split(';')[0].split(':')[1];
+                        parts.push({
+                            inlineData: {
+                                mimeType: mimeType,
+                                data: base64Data
+                            }
+                        });
+                    }
+
+                    const payload = {
+                        contents: [
+                            {
+                                role: 'user',
+                                parts: parts
+                            }
+                        ],
+                        systemInstruction: {
+                            parts: [{ text: systemPromptText + ' 请全程使用中文回答，并优先使用标准的 LaTeX 格式呈现所有数学公式。' }]
+                        }
+                    };
+
+                    try {
+                        const data = await fetchGeminiWithRetry(payload);
+                        const aiReply = data?.candidates?.[0]?.content?.parts?.[0]?.text || "导师刚才走神了，请再试一次吧！";
+
+                        messages.value.push({
+                            role: 'assistant',
+                            content: aiReply
+                        });
+                    } catch (error) {
+                        messages.value.push({
+                            role: 'assistant',
+                            content: "连接导师服务器出现异常，请稍后重试。"
+                        });
+                    } finally {
+                        isLoading.value = false;
+                        scrollToBottom();
+                    }
+                };
+
+                const scrollToBottom = () => {
+                    nextTick(() => {
+                        if (chatContainer.value) {
+                            chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
+                        }
+                    });
+                };
+
+                const clearHistory = () => {
+                    messages.value = [];
+                };
+
+                const copyText = (text) => {
+                    const cleanText = text.replace(/<[^>]*>?/gm, '');
+                    navigator.clipboard.writeText(cleanText);
+                };
+
+                // Audio Read Aloud (Web Speech API as fast fallback)
+                const speakText = (text) => {
+                    if ('speechSynthesis' in window) {
+                        if (speakingIndex.value !== null) {
+                            window.speechSynthesis.cancel();
+                            speakingIndex.value = null;
+                            return;
+                        }
+                        const cleanText = text.replace(/\$/g, '').replace(/\\frac\{(.*?)\}\{(.*?)\}/g, '$1除以$2');
+                        const utterance = new SpeechSynthesisUtterance(cleanText);
+                        utterance.lang = 'zh-CN';
+                        utterance.rate = 1.0;
+                        utterance.onend = () => { speakingIndex.value = null; };
+                        speakingIndex.value = messages.value.findIndex(m => m.content === text);
+                        window.speechSynthesis.speak(utterance);
+                    }
+                };
+
+                // --- GRAPHING CALCULATOR LOGIC ---
+                const initChart = () => {
+                    const ctxCanvas = document.getElementById('mathGraphCanvas');
+                    if (!ctxCanvas) return;
+
+                    chartInstance = new Chart(ctxCanvas, {
+                        type: 'line',
+                        data: {
+                            labels: [],
+                            datasets: [
+                                {
+                                    label: 'f(x)',
+                                    data: [],
+                                    borderColor: '#6366f1',
+                                    borderWidth: 2.5,
+                                    fill: false,
+                                    pointRadius: 0
+                                },
+                                {
+                                    label: 'g(x)',
+                                    data: [],
+                                    borderColor: '#10b981',
+                                    borderWidth: 2,
+                                    borderDash: [4, 4],
+                                    fill: false,
+                                    pointRadius: 0
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: {
+                                    type: 'linear',
+                                    position: 'center',
+                                    grid: { color: '#334155' },
+                                    ticks: { color: '#94a3b8' }
+                                },
+                                y: {
+                                    type: 'linear',
+                                    position: 'center',
+                                    grid: { color: '#334155' },
+                                    ticks: { color: '#94a3b8' }
+                                }
+                            },
+                            plugins: {
+                                legend: { labels: { color: '#e2e8f0' } }
+                            }
+                        }
+                    });
+                    updateChart();
+                };
+
+                const evalMathExpr = (expr, x) => {
+                    try {
+                        const safeExpr = expr
+                            .replace(/x/g, `(${x})`)
+                            .replace(/\^/g, '**');
+                        return Function(`'use strict'; return (${safeExpr})`)();
+                    } catch (e) {
+                        return null;
+                    }
+                };
+
+                const updateChart = () => {
+                    if (!chartInstance) return;
+                    const step = (xMax.value - xMin.value) / 100;
+                    const points1 = [];
+                    const points2 = [];
+
+                    for (let x = xMin.value; x <= xMax.value; x += step) {
+                        const y1 = evalMathExpr(graphEq1.value, x);
+                        if (y1 !== null && !isNaN(y1) && isFinite(y1)) {
+                            points1.push({ x: parseFloat(x.toFixed(2)), y: parseFloat(y1.toFixed(2)) });
+                        }
+                        if (graphEq2.value) {
+                            const y2 = evalMathExpr(graphEq2.value, x);
+                            if (y2 !== null && !isNaN(y2) && isFinite(y2)) {
+                                points2.push({ x: parseFloat(x.toFixed(2)), y: parseFloat(y2.toFixed(2)) });
+                            }
+                        }
+                    }
+
+                    chartInstance.data.datasets[0].label = `f(x) = ${graphEq1.value}`;
+                    chartInstance.data.datasets[0].data = points1;
+                    chartInstance.data.datasets[1].label = graphEq2.value ? `g(x) = ${graphEq2.value}` : '';
+                    chartInstance.data.datasets[1].data = points2;
+                    chartInstance.update();
+                };
+
+                const setGraphPreset = (eq1, eq2) => {
+                    graphEq1.value = eq1;
+                    graphEq2.value = eq2;
+                    updateChart();
+                };
+
+                const askAIGraphAnalysis = () => {
+                    activeTab.value = 'chat';
+                    inputQuery.value = `请帮我分析函数 $f(x) = ${graphEq1.value}$ 在 $x \\in [${xMin.value}, ${xMax.value}]$ 区间内的极值点、零点以及单调区间。`;
+                    sendMessage();
+                };
+
+                // --- PRACTICE QUIZ LOGIC ---
+                const generateNewQuiz = async () => {
+                    isQuizLoading.value = true;
+                    showQuizSolution.value = false;
+                    userQuizAnswer.value = '';
+
+                    const prompt = `请生成一道符合【${quizGrade.value}】学段、考点为【${quizTopic.value}】、难度为【${quizDifficulty.value}】的优质数学题目。
+                    请使用标准的 JSON 格式返回，包含两个字段：
+                    1. "question": 题目描述文本（支持 LaTeX 公式）
+                    2. "solution": 标准分步解答与答案`;
+
+                    const payload = {
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: {
+                            responseMimeType: "application/json",
+                            responseSchema: {
+                                type: "OBJECT",
+                                properties: {
+                                    question: { type: "STRING" },
+                                    solution: { type: "STRING" }
+                                },
+                                required: ["question", "solution"]
+                            }
+                        }
+                    };
+
+                    try {
+                        const data = await fetchGeminiWithRetry(payload);
+                        const jsonText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (jsonText) {
+                            currentQuiz.value = JSON.parse(jsonText);
+                            quizCount.value++;
+                        }
+                    } catch (e) {
+                        alert("生成练习题失败，请重新尝试。");
+                    } finally {
+                        isQuizLoading.value = false;
+                    }
+                };
+
+                const askAIEvaluateQuiz = () => {
+                    if (!userQuizAnswer.value.trim()) {
+                        alert("请先写下你的解题思路或最终答案再提交批改哦！");
+                        return;
+                    }
+                    activeTab.value = 'chat';
+                    inputQuery.value = `导师你好！我正在做这道训练题：
+【题目】: ${currentQuiz.value.question}
+【我的作答】: ${userQuizAnswer.value}
+
+请帮我批改我的解答，指出哪里做得对、哪里有逻辑漏洞或计算错误，并给出建议！`;
+                    sendMessage();
+                };
+
+                // --- DRAWING CANVAS SCRATCHPAD ---
+                const toggleScratchpad = () => {
+                    showScratchpad.value = !showScratchpad.value;
+                    if (showScratchpad.value) {
+                        nextTick(initScratchCanvas);
+                    }
+                };
+
+                const initScratchCanvas = () => {
+                    const canvas = scratchCanvas.value;
+                    if (!canvas) return;
+                    canvas.width = canvas.offsetWidth;
+                    canvas.height = canvas.offsetHeight;
+                    ctx = canvas.getContext('2d');
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                };
+
+                const startDrawing = (e) => {
+                    isDrawing = true;
+                    if (!ctx) return;
+                    ctx.beginPath();
+                    ctx.moveTo(e.offsetX, e.offsetY);
+                };
+
+                const draw = (e) => {
+                    if (!isDrawing || !ctx) return;
+                    ctx.strokeStyle = penColor.value;
+                    ctx.lineWidth = penWidth.value;
+                    ctx.lineTo(e.offsetX, e.offsetY);
+                    ctx.stroke();
+                };
+
+                const stopDrawing = () => {
+                    isDrawing = false;
+                };
+
+                const handleTouchStart = (e) => {
+                    const rect = scratchCanvas.value.getBoundingClientRect();
+                    const touch = e.touches[0];
+                    isDrawing = true;
+                    ctx.beginPath();
+                    ctx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
+                };
+
+                const handleTouchMove = (e) => {
+                    if (!isDrawing) return;
+                    const rect = scratchCanvas.value.getBoundingClientRect();
+                    const touch = e.touches[0];
+                    ctx.strokeStyle = penColor.value;
+                    ctx.lineWidth = penWidth.value;
+                    ctx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
+                    ctx.stroke();
+                };
+
+                const clearCanvas = () => {
+                    if (ctx && scratchCanvas.value) {
+                        ctx.clearRect(0, 0, scratchCanvas.value.width, scratchCanvas.value.height);
+                    }
+                };
+
+                const sendCanvasToAI = () => {
+                    if (!scratchCanvas.value) return;
+                    selectedImage.value = scratchCanvas.value.toDataURL('image/png');
+                    showScratchpad.value = false;
+                    activeTab.value = 'chat';
+                    inputQuery.value = "请识别我在草稿板上手写的数学计算或几何草图，并帮我讲解！";
+                };
+
+                // Lifecycle Mount Hook
+                onMounted(() => {
+                    nextTick(() => {
+                        initChart();
+                        generateNewQuiz();
+                    });
+                });
+
+                return {
+                    activeTab,
+                    tutorModes,
+                    currentMode,
+                    quickPrompts,
+                    mathSymbols,
+                    messages,
+                    inputQuery,
+                    selectedImage,
+                    isLoading,
+                    chatContainer,
+                    inputBox,
+                    speakingIndex,
+                    graphEq1,
+                    graphEq2,
+                    xMin,
+                    xMax,
+                    quizGrade,
+                    quizTopic,
+                    quizDifficulty,
+                    isQuizLoading,
+                    currentQuiz,
+                    showQuizSolution,
+                    userQuizAnswer,
+                    quizCount,
+                    showScratchpad,
+                    scratchCanvas,
+                    penColor,
+                    penWidth,
+                    renderMarkdownAndMath,
+                    insertSymbol,
+                    useQuickPrompt,
+                    handleImageUpload,
+                    removeImage,
+                    sendMessage,
+                    clearHistory,
+                    copyText,
+                    speakText,
+                    updateChart,
+                    setGraphPreset,
+                    askAIGraphAnalysis,
+                    generateNewQuiz,
+                    askAIEvaluateQuiz,
+                    toggleScratchpad,
+                    clearCanvas,
+                    sendCanvasToAI,
+                    startDrawing,
+                    draw,
+                    stopDrawing,
+                    handleTouchStart,
+                    handleTouchMove
+                };
+            }
+        }).mount('#app');
+    </script>
+
+    <!-- API Key Settings (visitor-side, stored in localStorage only) -->
+    <div id="apiKeySettings" style="position:fixed;bottom:24px;right:24px;z-index:9999;">
+        <button onclick="toggleKeyPanel()" title="设置 API 密钥"
+            style="width:48px;height:48px;border-radius:50%;border:none;background:#4f46e5;color:#fff;font-size:20px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.3);">⚙</button>
+        <div id="keyPanel" style="display:none;position:absolute;bottom:60px;right:0;width:320px;background:#1e1b2e;border:1px solid #4b5563;border-radius:12px;padding:16px;color:#e5e7eb;font-family:sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.4);">
+            <div style="font-weight:bold;margin-bottom:8px;">Gemini API 密钥设置</div>
+            <div style="font-size:12px;color:#9ca3af;margin-bottom:10px;">密钥仅保存在你自己的浏览器中（localStorage），不会被上传或写入页面代码。</div>
+            <input id="keyInput" type="password" placeholder="粘贴 AIza... 开头的密钥"
+                style="width:100%;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1px solid #4b5563;background:#111827;color:#f9fafb;font-size:13px;margin-bottom:10px;" />
+            <div style="display:flex;gap:8px;">
+                <button onclick="saveKey()" style="flex:1;padding:8px 0;border:none;border-radius:8px;background:#4f46e5;color:#fff;cursor:pointer;font-size:13px;">保存并刷新</button>
+                <button onclick="clearKey()" style="flex:1;padding:8px 0;border:none;border-radius:8px;background:#374151;color:#e5e7eb;cursor:pointer;font-size:13px;">清除</button>
+            </div>
+            <div id="keyStatus" style="font-size:12px;margin-top:8px;color:#34d399;"></div>
+        </div>
+    </div>
+    <script>
+        function toggleKeyPanel() {
+            const p = document.getElementById('keyPanel');
+            p.style.display = p.style.display === 'none' ? 'block' : 'none';
+            const saved = localStorage.getItem('gemini_api_key');
+            if (saved) {
+                document.getElementById('keyInput').value = saved;
+                document.getElementById('keyStatus').textContent = '当前已配置密钥（点击保存可更换）';
+            }
+        }
+        function saveKey() {
+            const v = document.getElementById('keyInput').value.trim();
+            if (!v) { document.getElementById('keyStatus').textContent = '请先粘贴密钥'; return; }
+            localStorage.setItem('gemini_api_key', v);
+            location.reload();
+        }
+        function clearKey() {
+            localStorage.removeItem('gemini_api_key');
+            document.getElementById('keyInput').value = '';
+            document.getElementById('keyStatus').textContent = '已清除，刷新后生效';
+            setTimeout(() => location.reload(), 800);
+        }
+    </script>
+</body>
+</html>
